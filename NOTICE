@@ -1,0 +1,7 @@
+Ripple Web Forms Sample
+Copyright 2026 tato-natenadze
+
+Licensed under the Apache License, Version 2.0.
+
+This sample uses Ripple.MultiSupport and Newtonsoft.Json as NuGet dependencies.
+Those packages retain their respective licenses, copyrights and notices.

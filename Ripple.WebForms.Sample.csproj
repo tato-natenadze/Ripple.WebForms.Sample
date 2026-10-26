@@ -55,6 +55,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Content Include="Default.aspx" /><Content Include="Status.ashx" /><Content Include="Global.asax" />
     <Content Include="Web.config" /><Content Include="sample.css" /><Content Include="sample.js" />
+    <Content Include="LICENSE" /><Content Include="NOTICE" />
     <None Include="README.md" /><None Include="NuGet.Config" /><None Include=".gitignore" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

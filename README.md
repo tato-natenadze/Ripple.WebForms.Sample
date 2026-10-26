@@ -53,6 +53,11 @@ Seeds are protected with Windows DPAPI for the Windows account running the app.
 Keep your local data on that account and exclude `App_Data` when sharing the sample.
 Balances are read from validated Testnet ledgers.
 
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
+See [NOTICE](NOTICE) for attribution. Dependencies retain their own licenses and notices.
+
 ## Disclaimer
 
 Provided AS IS, without warranties of any kind. Use at your own risk. To the extent permitted by applicable law, the authors and contributors accept no liability for any loss, damage or claim arising from use of this sample.
