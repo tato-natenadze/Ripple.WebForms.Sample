@@ -17,6 +17,7 @@ namespace Ripple.WebForms.Sample
     public sealed class WalletView
     {
         public string Address { get; set; }
+        public string Seed { get; set; }
         public string Balance { get; set; }
         public string Reserve { get; set; } = "—";
         public string Available { get; set; } = "—";
@@ -33,6 +34,7 @@ namespace Ripple.WebForms.Sample
         public string EstimatedFee { get; set; }
         public bool Busy { get; set; }
         public bool Ready { get; set; }
+        public TestnetServer Server { get; set; }
         public object[] Transfers { get; set; }
         public object[] Incoming { get; set; }
         public object[] AccountDeletes { get; set; }
@@ -40,12 +42,10 @@ namespace Ripple.WebForms.Sample
 
     public sealed partial class DemoRuntime
     {
-        public static readonly Uri RpcEndpoint = new Uri("https://s.altnet.rippletest.net:51234/");
-        private static readonly Uri SocketEndpoint = new Uri("wss://s.altnet.rippletest.net:51233/");
         private static readonly Uri FaucetEndpoint = new Uri("https://faucet.altnet.rippletest.net/accounts");
         private readonly StateStore _store;
         private readonly HttpClient _http = new HttpClient();
-        private readonly XrplClient _client;
+        private XrplClient _client;
         private readonly CancellationTokenSource _shutdown = new CancellationTokenSource();
         private readonly SemaphoreSlim _actions = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _recovery = new SemaphoreSlim(1, 1);
@@ -64,8 +64,7 @@ namespace Ripple.WebForms.Sample
             _store = new StateStore(dataDirectory);
             if (_store.Snapshot().Sender != null || _store.Snapshot().Receiver != null)
                 _message = "Saved wallets and payment history loaded.";
-            _client = new XrplClient(new XrplClientOptions { RpcEndpoint = RpcEndpoint,
-                WebSocketEndpoint = SocketEndpoint });
+            _client = CurrentServer.CreateClient();
             HostingEnvironment.QueueBackgroundWorkItem(async stopping =>
             {
                 using (var linked = CancellationTokenSource.CreateLinkedTokenSource(stopping, _shutdown.Token))
@@ -94,8 +93,9 @@ namespace Ripple.WebForms.Sample
                                 await Task.Delay(TimeSpan.FromSeconds(2), linked.Token).ConfigureAwait(false);
                             }
                         }
+                        StartConnection();
                         _initialized.TrySetResult(true);
-                        await Task.WhenAll(MaintainAsync(linked.Token), ReceiveAsync(linked.Token)).ConfigureAwait(false);
+                        await Task.Delay(Timeout.Infinite, linked.Token).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
                     catch (Exception ex) { SetMessage(Describe(ex)); }
@@ -103,9 +103,18 @@ namespace Ripple.WebForms.Sample
                     {
                         _initialized.TrySetCanceled();
                         _shutdown.Cancel();
-                        _client.Dispose();
-                        _http.Dispose();
-                        _store.Dispose();
+                        await _actions.WaitAsync().ConfigureAwait(false);
+                        try
+                        {
+                            await StopConnectionAsync().ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            _client.Dispose();
+                            _http.Dispose();
+                            _store.Dispose();
+                            _actions.Release();
+                        }
                     }
                 }
             });
@@ -124,6 +133,7 @@ namespace Ripple.WebForms.Sample
                     Monitoring = _monitoring, Busy = Volatile.Read(ref _busy) != 0,
                     EstimatedFee = _estimatedFee,
                     Ready = _initialized.Task.Status == TaskStatus.RanToCompletion,
+                    Server = TestnetServer.Get(state.ServerId),
                     Transfers = state.Transfers.AsEnumerable().Reverse().Select(x => (object)new {
                         Amount = Xrp(x.AmountXrp), Status = x.FinishedWithoutSubmission ? "Not submitted" : x.Status.ToString(),
                         Hash = x.Receipt?.Hash, Fee = x.FeeXrp.HasValue ? Xrp(x.FeeXrp.Value) : null, Detail = x.Detail,
@@ -143,11 +153,12 @@ namespace Ripple.WebForms.Sample
         private WalletView View(WalletState wallet)
         {
             if (wallet == null) return new WalletView { Status = "Not created", Balance = "—" };
+            string seed = StateStore.ReadSeed(wallet);
             WalletView balance;
             if (_balances.TryGetValue(wallet.Address, out balance))
-                return new WalletView { Address = wallet.Address, Balance = balance.Balance, Reserve = balance.Reserve,
+                return new WalletView { Address = wallet.Address, Seed = seed, Balance = balance.Balance, Reserve = balance.Reserve,
                     Available = balance.Available, Status = balance.Status, Ledger = balance.Ledger };
-            return new WalletView { Address = wallet.Address, Status = "Checking Testnet…", Balance = "—" };
+            return new WalletView { Address = wallet.Address, Seed = seed, Status = "Checking Testnet…", Balance = "—" };
         }
 
         public Task CreateWalletAsync(bool sender, CancellationToken token)
@@ -352,6 +363,8 @@ namespace Ripple.WebForms.Sample
                     catch (Exception ex) when (IsTemporary(ex, token)) { SetMonitoring("Waiting for the Testnet connection."); }
                     await Task.Delay(TimeSpan.FromSeconds(2), token).ConfigureAwait(false);
                 }
+                string resumeCheckpoint = state.Checkpoint;
+                if (state.ServerId != "ripple") state.IncomingCheckpoints.TryGetValue(state.ServerId, out resumeCheckpoint);
                 SetMonitoring("Watching confirmed incoming payments.");
                 await _client.WatchIncomingPaymentsAsync(state.Receiver.Address, (payment, callbackToken) =>
                 {
@@ -364,11 +377,14 @@ namespace Ripple.WebForms.Sample
                     Interlocked.Exchange(ref _refreshBalances, 1);
                     return Task.CompletedTask;
                 }, new PaymentWatchOptions {
-                    Checkpoint = state.Checkpoint,
-                    FromLedger = state.Checkpoint == null ? state.FirstIncomingLedger : null,
+                    Checkpoint = resumeCheckpoint,
+                    FromLedger = resumeCheckpoint == null ? state.FirstIncomingLedger : null,
                     SaveCheckpointAsync = (checkpoint, callbackToken) => {
                         callbackToken.ThrowIfCancellationRequested();
-                        _store.Update(next => next.Checkpoint = checkpoint);
+                        _store.Update(next => {
+                            if (state.ServerId == "ripple") next.Checkpoint = checkpoint;
+                            else next.IncomingCheckpoints[state.ServerId] = checkpoint;
+                        });
                         return Task.CompletedTask;
                     }
                 }, token).ConfigureAwait(false);

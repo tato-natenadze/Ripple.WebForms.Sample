@@ -72,6 +72,8 @@ namespace Ripple.WebForms.Sample
     {
         public int Version { get; set; } = 1;
         public int NetworkId { get; set; } = 1;
+        public string ServerId { get; set; } = "ripple";
+        public Dictionary<string, string> IncomingCheckpoints { get; set; } = new Dictionary<string, string>();
         public WalletState Sender { get; set; }
         public WalletState Receiver { get; set; }
         public uint? FirstIncomingLedger { get; set; }
@@ -179,6 +181,14 @@ namespace Ripple.WebForms.Sample
         {
             if (state == null || state.Version != 1 || state.NetworkId != 1 || state.Transfers == null || state.Incoming == null || state.FaucetOperations == null || state.AccountDeletes == null)
                 throw new InvalidDataException("Saved sample data is not valid Testnet data.");
+            TestnetServer.Get(state.ServerId);
+            if (state.IncomingCheckpoints == null) throw new InvalidDataException("Saved monitoring checkpoints are invalid.");
+            foreach (var checkpoint in state.IncomingCheckpoints)
+            {
+                TestnetServer.Get(checkpoint.Key);
+                if (checkpoint.Key == "ripple" || string.IsNullOrEmpty(checkpoint.Value))
+                    throw new InvalidDataException("Saved monitoring checkpoints are invalid.");
+            }
             var faucetIds = new HashSet<string>(StringComparer.Ordinal);
             foreach (string id in state.FaucetOperations)
             {
@@ -205,7 +215,7 @@ namespace Ripple.WebForms.Sample
                     transfer.AmountXrp <= 0 || transfer.AmountXrp > 100000000000m || decimal.Truncate(transfer.AmountXrp * 1000000m) != transfer.AmountXrp * 1000000m)
                     throw new InvalidDataException("Saved transfer data is invalid.");
                 if (transfer.Receipt != null && (state.Sender == null || transfer.Receipt.Sender != state.Sender.Address ||
-                    transfer.Receipt.RpcEndpoint != DemoRuntime.RpcEndpoint))
+                    !TestnetServer.Contains(transfer.Receipt.RpcEndpoint)))
                     throw new InvalidDataException("A saved receipt belongs to a different sender or network.");
                 if (!Enum.IsDefined(typeof(TransactionStatus), transfer.Status)) throw new InvalidDataException("Invalid saved transaction status.");
                 if ((transfer.Receipt == null && transfer.Status != TransactionStatus.Unknown) ||
@@ -223,7 +233,7 @@ namespace Ripple.WebForms.Sample
                     !RippleClient.ValidateAddress(item.Sender) || !Enum.IsDefined(typeof(TransactionStatus), item.Status) ||
                     (item.Receipt == null && item.Status != TransactionStatus.Unknown) ||
                     (item.Receipt != null && (item.FinishedWithoutSubmission || item.Receipt.Sender != item.Sender ||
-                        item.Receipt.RpcEndpoint != DemoRuntime.RpcEndpoint)) ||
+                        !TestnetServer.Contains(item.Receipt.RpcEndpoint))) ||
                     (item.ReturnedAmountXrp.HasValue && item.Status != TransactionStatus.Succeeded))
                     throw new InvalidDataException("Saved AccountDelete data is invalid.");
                 foreach (decimal? amount in new[] { item.FeeXrp, item.ReturnedAmountXrp })

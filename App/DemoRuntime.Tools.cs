@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Ripple;
 using Newtonsoft.Json.Linq;
 using Ripple.LibraryClasses.Signer;
+using Ripple.LibraryClasses.CreateAddress;
 
 namespace Ripple.WebForms.Sample
 {
@@ -15,6 +16,8 @@ namespace Ripple.WebForms.Sample
         internal void ReportToolMessage(string message) { SetMessage(message); }
         internal string SavedReceiverAddress { get { return _store.Snapshot().Receiver?.Address; } }
         internal string SavedSenderAddress { get { return _store.Snapshot().Sender?.Address; } }
+
+        internal string SavedSenderSeed { get { var sender = _store.Snapshot().Sender; return sender == null ? null : StateStore.ReadSeed(sender); } }
 
         public Task<AccountInfo> ReadAccountDetailsAsync(string address, CancellationToken token)
         {
@@ -35,18 +38,21 @@ namespace Ripple.WebForms.Sample
             return network;
         }
 
-        public Task<string> SignOfflineAsync(string amountText, string destination, uint? tag, string memo,
+        public Task<string> SignOfflineAsync(string account, string seed, string amountText, string destination, uint? tag, string memo,
             uint sequence, string feeDrops, uint? lastLedger, CancellationToken token)
         {
             return RunQueryAsync(ct => {
                 ct.ThrowIfCancellationRequested();
-                var state = _store.Snapshot();
-                if (state.Sender == null) throw new InvalidOperationException("Create the sender wallet first.");
+                if (!RippleClient.ValidateAddress(account)) throw new ArgumentException("Enter a valid classic signing account.", nameof(account));
+                if (!RippleClient.ValidateAddress(destination)) throw new ArgumentException("Enter a valid classic destination address.", nameof(destination));
+                try { if (string.IsNullOrEmpty(seed) || seed.Length > 100) throw new FormatException(); Seed.FromBase58(seed); }
+                catch (Exception ex) when (ex is ArgumentException || ex is FormatException)
+                { throw new ArgumentException("Enter a valid XRPL seed.", nameof(seed)); }
                 ulong fee;
                 if (!ulong.TryParse(feeDrops?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out fee) || fee == 0)
-                    throw new ArgumentException("Fee must be a positive integer number of drops.");
-                var tx = new JObject { ["TransactionType"] = "Payment", ["Account"] = state.Sender.Address,
-                    ["Destination"] = ResolveDestination(state, destination),
+                    throw new ArgumentException("Fee must be a positive integer number of drops.", nameof(feeDrops));
+                var tx = new JObject { ["TransactionType"] = "Payment", ["Account"] = account,
+                    ["Destination"] = destination,
                     ["Amount"] = (ParseAmount(amountText) * 1000000m).ToString("0", CultureInfo.InvariantCulture),
                     ["Fee"] = fee.ToString(CultureInfo.InvariantCulture), ["Sequence"] = sequence };
                 if (tag.HasValue) tx["DestinationTag"] = tag.Value;
@@ -54,10 +60,10 @@ namespace Ripple.WebForms.Sample
                 if (memo != null)
                 {
                     byte[] bytes = new UTF8Encoding(false, true).GetBytes(memo);
-                    if (bytes.Length > 1000) throw new ArgumentException("Memo exceeds 1000 UTF-8 bytes.");
+                    if (bytes.Length > 1000) throw new ArgumentException("Memo exceeds 1000 UTF-8 bytes.", nameof(memo));
                     tx["Memos"] = new JArray(new JObject { ["Memo"] = new JObject { ["MemoData"] = B16.Encode(bytes) } });
                 }
-                tx["Seed"] = StateStore.ReadSeed(state.Sender);
+                tx["Seed"] = seed;
                 try { return Task.FromResult(RippleClient.SignTransaction(tx)); }
                 finally { tx.Remove("Seed"); }
             }, token);

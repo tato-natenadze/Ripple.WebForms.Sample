@@ -33,8 +33,20 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="App\TestnetServer.cs" /><Compile Include="App\DemoRuntime.Connection.cs" />
     <Compile Include="App\StateStore.cs" /><Compile Include="App\DemoRuntime.cs" />
     <Compile Include="App\DemoRuntime.Tools.cs" /><Compile Include="App\DemoRuntime.Delete.cs" />
+    <Compile Include="Default.Implementation.aspx.cs"><DependentUpon>Default.aspx</DependentUpon></Compile>
+    <Compile Include="Examples\AccountExamples.cs" /><Content Include="Examples\AccountExamples.cs" />
+    <Compile Include="Examples\AddressExamples.cs" /><Content Include="Examples\AddressExamples.cs" />
+    <Compile Include="Examples\DeleteExamples.cs" /><Content Include="Examples\DeleteExamples.cs" />
+    <Compile Include="Examples\HistoryExamples.cs" /><Content Include="Examples\HistoryExamples.cs" />
+    <Compile Include="Examples\PaymentExamples.cs" /><Content Include="Examples\PaymentExamples.cs" />
+    <Compile Include="Examples\SigningExamples.cs" /><Content Include="Examples\SigningExamples.cs" />
+    <Compile Include="Examples\TestnetExamples.cs" /><Content Include="Examples\TestnetExamples.cs" />
+    <Compile Include="Examples\TransactionExamples.cs" /><Content Include="Examples\TransactionExamples.cs" />
+    <Compile Include="Examples\WalletExamples.cs" /><Content Include="Examples\WalletExamples.cs" />
+    <Compile Include="Default.Network.aspx.cs"><DependentUpon>Default.aspx</DependentUpon></Compile>
     <Compile Include="Default.Delete.aspx.cs"><DependentUpon>Default.aspx</DependentUpon></Compile>
     <Compile Include="Default.Tools.aspx.cs"><DependentUpon>Default.aspx</DependentUpon></Compile>
     <Compile Include="Default.aspx.cs"><DependentUpon>Default.aspx</DependentUpon></Compile>

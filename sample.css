@@ -35,10 +35,28 @@ input[type="text"].input-error, .tool-fields textarea.input-error { border-color
 .tab-button { border: 1px solid #aab5c2; background: white; color: #172536; border-radius: 4px; padding: 9px 13px; font: inherit; cursor: pointer; }
 .tab-button[aria-selected="true"] { border-color: #235eb0; background: #235eb0; color: white; }
 .tab-button:focus-visible { outline: 3px solid #8cb8f0; outline-offset: 2px; }
-.tab-panel { min-height: calc(100vh - 120px); }
+.tab-panel { min-height: calc(100vh - 120px); background: white; border: 1px solid #d8dfe6; border-radius: 8px; padding: 22px; }
 .tab-panel[hidden] { display: none; }
 
 #DeleteUpdate { display: contents; }
 .tool-fields select { display: block; width: min(100%, 640px); margin: 6px 0; border: 1px solid #aab5c2; border-radius: 4px; padding: 9px; font: inherit; }
 .tool-fields select.input-error { border-color: #b42318; }
 .tool-fields select:focus-visible { outline: 3px solid #8cb8f0; outline-offset: 2px; }
+
+input[aria-busy="true"] { opacity: 1; cursor: progress; }
+
+#SigningSeed { display: block; width: min(100%, 640px); margin: 6px 0; border: 1px solid #aab5c2; border-radius: 4px; padding: 9px; font: inherit; }
+#SigningSeed.input-error { border-color: #b42318; }
+
+.testnet-banner { padding: 12px 14px; border: 1px solid #dec277; border-radius: 4px; background: #fff8df; color: #5c470c; }
+.sample-disclaimer { font-size: 13px; color: #526174; }
+.wallet-detail-label { margin: 12px 0 4px; font-size: 13px; font-weight: 600; color: #526174; }
+.wallet-seed { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+
+.section-title { margin: 0 0 10px; font-size: 22px; }
+.example-tabs { display: flex; gap: 24px; margin-bottom: 22px; border-bottom: 1px solid #d8dfe6; }
+.example-tabs .tab-button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; color: #526174; padding: 9px 2px; }
+.example-tabs .tab-button[aria-selected="true"] { border-bottom-color: #235eb0; background: transparent; color: #235eb0; }
+@media (max-width: 680px) { .tab-panel { padding: 16px; } }
+.example-panel[hidden] { display: none; }
+.implementation-code { margin: 0; padding: 16px; border-radius: 4px; background: #f3f5f7; overflow-x: auto; font: 13px/1.6 ui-monospace, monospace; tab-size: 4; }

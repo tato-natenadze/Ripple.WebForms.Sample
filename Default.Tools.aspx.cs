@@ -30,6 +30,8 @@ namespace Ripple.WebForms.Sample
         protected TextBox TransactionHash;
         protected Button QueryTransaction;
         protected Literal TransactionResult;
+        protected TextBox SigningAccount, SigningSeed, SigningAmount, SigningDestination, SigningTag, SigningMemo;
+        protected System.Web.UI.WebControls.HiddenField SigningDefaultsReady;
         protected TextBox SigningSequence, SigningFee, SigningLastLedger;
         protected Button SignOffline;
         protected Literal OfflineResult;
@@ -63,8 +65,9 @@ namespace Ripple.WebForms.Sample
             OfflineResult.Text = string.Empty;
             RegisterTool(async () => {
                 uint sequence = ReadOptionalUInt(SigningSequence, "Sequence") ?? throw new FieldInputException(SigningSequence, "Sequence is required.");
-                OfflineResult.Text = await WebApplication.Runtime.SignOfflineAsync(Amount.Text, PaymentDestination.Text,
-                    ReadPaymentTag(), ReadPaymentMemo(), sequence, SigningFee.Text,
+                OfflineResult.Text = await WebApplication.Runtime.SignOfflineAsync(SigningAccount.Text.Trim(), SigningSeed.Text.Trim(),
+                    SigningAmount.Text, SigningDestination.Text.Trim(), ReadOptionalUInt(SigningTag, "Destination tag"),
+                    SigningMemo.Text.Length == 0 ? null : SigningMemo.Text, sequence, SigningFee.Text,
                     ReadOptionalUInt(SigningLastLedger, "Last ledger sequence"), CancellationToken.None);
             }, "Payment signed locally. Nothing was submitted.", errorField: SigningErrorField);
         }
@@ -84,7 +87,10 @@ namespace Ripple.WebForms.Sample
             bool hasNext = !string.IsNullOrEmpty(ViewState["HistoryCursor"] as string);
             NextHistory.Enabled = hasNext;
             NextHistory.Attributes["data-available"] = hasNext ? "true" : "false";
+            InitializeSigningDefaults();
             BindDeleteAvailability();
+            BindTestnetServer();
+            BindImplementationExamples();
             base.OnPreRenderComplete(e);
         }
 
@@ -235,7 +241,8 @@ namespace Ripple.WebForms.Sample
         {
             foreach (var field in new WebControl[] { DeleteSource, DeleteDestination, DeleteTag, DeleteMaxFee, Amount, PaymentDestination, PaymentTag, PaymentMemo, ValidationAddress,
                 XClassicAddress, XTag, XAddressInput, HistoryAddress, HistoryFrom, HistoryTo, HistoryLimit,
-                TransactionHash, SigningSequence, SigningFee, SigningLastLedger, AccountAddress })
+                TransactionHash, SigningAccount, SigningSeed, SigningAmount, SigningDestination, SigningTag, SigningMemo,
+                SigningSequence, SigningFee, SigningLastLedger, AccountAddress, SelectedTestnetServer })
             {
                 // Keep the control tree stable across postbacks, including when
                 // a previously invalid field becomes valid.
@@ -294,17 +301,28 @@ namespace Ripple.WebForms.Sample
             }
         }
 
+        private void InitializeSigningDefaults()
+        {
+            if (SigningDefaultsReady.Value == "true" || WebApplication.Runtime == null) return;
+            SigningAccount.Text = WebApplication.Runtime.SavedSenderAddress ?? string.Empty;
+            SigningSeed.Text = WebApplication.Runtime.SavedSenderSeed ?? string.Empty;
+            SigningAmount.Text = Amount.Text;
+            SigningDestination.Text = string.IsNullOrWhiteSpace(PaymentDestination.Text)
+                ? WebApplication.Runtime.SavedReceiverAddress ?? string.Empty : PaymentDestination.Text.Trim();
+            SigningTag.Text = PaymentTag.Text;
+            SigningMemo.Text = PaymentMemo.Text;
+        }
+
         private TextBox SigningErrorField(Exception ex)
         {
-            if (InputException(ex) && ex.Message.StartsWith("Fee must be a positive integer number of drops.", StringComparison.Ordinal))
-                return SigningFee;
-            if ((ex as ArgumentException)?.ParamName == "tx")
-            {
-                string destination = string.IsNullOrWhiteSpace(PaymentDestination.Text)
-                    ? WebApplication.Runtime.SavedReceiverAddress : PaymentDestination.Text.Trim();
-                if (!RippleClient.ValidateAddress(destination)) return PaymentDestination;
-            }
-            return PaymentErrorField(ex);
+            string name = (ex as ArgumentException)?.ParamName;
+            if (name == "account") return SigningAccount;
+            if (name == "seed") return SigningSeed;
+            if (name == "destination") return SigningDestination;
+            if (name == "feeDrops") return SigningFee;
+            if (ex.Message.StartsWith("Enter a positive XRP amount", StringComparison.Ordinal)) return SigningAmount;
+            if (ex.Message.StartsWith("Memo exceeds 1000 UTF-8 bytes.", StringComparison.Ordinal)) return SigningMemo;
+            return null;
         }
 
         private TextBox HistoryErrorField(Exception ex)

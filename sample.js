@@ -5,6 +5,7 @@ const renderedRows = new Map();
 let currentState = null;
 let actionPosition = null;
 let previousOverflowAnchor = "";
+let busyAction = null;
 
 function initializeTabs() {
     const tabs = Array.from(document.querySelectorAll('.tabs [role="tab"]'));
@@ -21,6 +22,7 @@ function initializeTabs() {
             document.getElementById(item.getAttribute("aria-controls")).hidden = !selected;
         });
         saved.value = tab.dataset.tab;
+        if (tab.dataset.tab === "signing") initializeSigningDefaults();
         if (focus) tab.focus({ preventScroll: true });
     }
     tabs.forEach((tab, index) => {
@@ -37,6 +39,80 @@ function initializeTabs() {
         });
     });
     select(tabs.find(tab => tab.dataset.tab === saved.value) || tabs[0], false);
+}
+
+function initializeExampleTabs() {
+    const saved = document.getElementById("ActiveExamples");
+    let selections;
+    try { selections = JSON.parse(saved.value); } catch { selections = {}; }
+    if (!selections || typeof selections !== "object" || Array.isArray(selections)) selections = {};
+    document.querySelectorAll(".example-tabs").forEach(group => {
+        const tabs = Array.from(group.querySelectorAll('[role="tab"]'));
+        const topic = group.dataset.topic;
+        function select(tab, focus) {
+            const selectedPanel = document.getElementById(tab.getAttribute("aria-controls"));
+            if (selectedPanel.hidden && actionPosition) {
+                const action = document.getElementById(actionPosition.id);
+                if (group.parentElement.contains(action)) {
+                    actionPosition = null;
+                    document.documentElement.style.overflowAnchor = previousOverflowAnchor;
+                }
+            }
+            tabs.forEach(item => {
+                const active = item === tab;
+                item.setAttribute("aria-selected", String(active));
+                item.tabIndex = active ? 0 : -1;
+                document.getElementById(item.getAttribute("aria-controls")).hidden = !active;
+            });
+            selections[topic] = tab.dataset.view;
+            saved.value = JSON.stringify(selections);
+            if (focus) tab.focus({ preventScroll: true });
+        }
+        tabs.forEach((tab, index) => {
+            tab.addEventListener("click", () => select(tab, false));
+            tab.addEventListener("keydown", event => {
+                let target;
+                if (event.key === "ArrowRight") target = (index + 1) % tabs.length;
+                else if (event.key === "ArrowLeft") target = (index + tabs.length - 1) % tabs.length;
+                else if (event.key === "Home") target = 0;
+                else if (event.key === "End") target = tabs.length - 1;
+                else return;
+                event.preventDefault();
+                select(tabs[target], true);
+            });
+        });
+        select(tabs.find(tab => tab.dataset.view === selections[topic]) || tabs[0], false);
+    });
+}
+
+function initializeSigningDefaults() {
+    const ready = document.getElementById("SigningDefaultsReady");
+    if (ready.value === "true") return;
+    document.getElementById("SigningAmount").value = document.getElementById("Amount").value;
+    document.getElementById("SigningDestination").value = document.getElementById("PaymentDestination").value.trim() ||
+        currentState?.Receiver.Address || document.getElementById("SigningDestination").value;
+    document.getElementById("SigningTag").value = document.getElementById("PaymentTag").value;
+    document.getElementById("SigningMemo").value = document.getElementById("PaymentMemo").value;
+    ready.value = "true";
+}
+
+function showBusyAction(button) {
+    if (!button) return;
+    busyAction = { id: button.id, value: button.value, width: button.style.width };
+    button.style.width = button.getBoundingClientRect().width + "px";
+    button.value = "Working";
+    button.setAttribute("aria-busy", "true");
+}
+
+function clearBusyAction() {
+    if (!busyAction) return;
+    const button = document.getElementById(busyAction.id);
+    if (button) {
+        button.value = busyAction.value;
+        button.style.width = busyAction.width;
+        button.removeAttribute("aria-busy");
+    }
+    busyAction = null;
 }
 
 function captureActionPosition(button) {
@@ -64,6 +140,7 @@ function beginAction(button) {
     document.documentElement.style.overflowAnchor = "none";
     actionPosition = captureActionPosition(button);
     posting = true;
+    showBusyAction(button);
     disableActions();
     document.getElementById("connection").textContent = "Processing your request…";
     restoreActionPosition(actionPosition);
@@ -100,6 +177,7 @@ document.addEventListener("change", event => {
 
 function wallet(prefix, value) {
     document.getElementById(prefix + "Address").textContent = value.Address || "Not created";
+    document.getElementById(prefix + "Seed").textContent = value.Seed || "Not created";
     document.getElementById(prefix + "Balance").textContent = value.Balance;
     document.getElementById(prefix + "Reserve").textContent = value.Reserve || "—";
     document.getElementById(prefix + "Available").textContent = value.Available || "—";
@@ -140,6 +218,9 @@ async function refresh() {
         const state = await response.json();
         if (!response.ok) throw new Error(state.Error || "The sample is unavailable.");
         currentState = state;
+        document.getElementById("currentServerName").textContent = state.Server.Name;
+        document.getElementById("currentRpcEndpoint").textContent = state.Server.RpcEndpoint;
+        document.getElementById("currentSocketEndpoint").textContent = state.Server.WebSocketEndpoint;
         wallet("sender", state.Sender);
         wallet("receiver", state.Receiver);
         if (!posting) document.getElementById("connection").textContent = state.Message;
@@ -167,6 +248,7 @@ if (typeof Sys !== "undefined" && Sys.WebForms) {
     });
     requests.add_endRequest((sender, args) => {
         posting = false;
+        clearBusyAction();
         const error = args.get_error();
         if (error) {
             args.set_errorHandled(true);
@@ -181,5 +263,6 @@ if (typeof Sys !== "undefined" && Sys.WebForms) {
 
 window.addEventListener("pagehide", () => { stopped = true; });
 initializeTabs();
+initializeExampleTabs();
 disableActions();
 refresh();
