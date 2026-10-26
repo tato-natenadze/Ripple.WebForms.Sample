@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
+    <ProjectGuid>{0378A8F9-B690-4AE4-BE68-4B31777A10ED}</ProjectGuid>
+    <ProjectTypeGuids>{349C5851-65DF-11DA-9384-00065B846F21};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Ripple.WebForms.Sample</RootNamespace>
+    <AssemblyName>Ripple.WebForms.Sample</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <LangVersion>7.3</LangVersion>
+    <UseIISExpress>true</UseIISExpress>
+    <Use64BitIISExpress>true</Use64BitIISExpress>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DebugSymbols>true</DebugSymbols><DebugType>full</DebugType><Optimize>false</Optimize><OutputPath>bin\</OutputPath><DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DebugType>pdbonly</DebugType><Optimize>true</Optimize><OutputPath>bin\</OutputPath><DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" /><Reference Include="System.Core" /><Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" /><Reference Include="System.Net.Http" />
+    <Reference Include="System.Security" /><Reference Include="System.Configuration" /><Reference Include="netstandard" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Ripple.MultiSupport" Version="1.1.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="App\StateStore.cs" /><Compile Include="App\DemoRuntime.cs" />
+    <Compile Include="App\DemoRuntime.Tools.cs" /><Compile Include="App\DemoRuntime.Delete.cs" />
+    <Compile Include="Default.Delete.aspx.cs"><DependentUpon>Default.aspx</DependentUpon></Compile>
+    <Compile Include="Default.Tools.aspx.cs"><DependentUpon>Default.aspx</DependentUpon></Compile>
+    <Compile Include="Default.aspx.cs"><DependentUpon>Default.aspx</DependentUpon></Compile>
+    <Compile Include="Status.ashx.cs"><DependentUpon>Status.ashx</DependentUpon></Compile>
+    <Compile Include="Global.asax.cs"><DependentUpon>Global.asax</DependentUpon></Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Content Include="Default.aspx" /><Content Include="Status.ashx" /><Content Include="Global.asax" />
+    <Content Include="Web.config" /><Content Include="sample.css" /><Content Include="sample.js" />
+    <None Include="README.md" /><None Include="NuGet.Config" /><None Include=".gitignore" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">17.0</VisualStudioVersion>
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+  </PropertyGroup>
+  <Import Project="$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets" Condition="Exists('$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets')" />
+  <ProjectExtensions><VisualStudio><FlavorProperties GUID="{349C5851-65DF-11DA-9384-00065B846F21}"><WebProjectProperties>
+    <UseIIS>True</UseIIS><AutoAssignPort>True</AutoAssignPort><DevelopmentServerPort>51843</DevelopmentServerPort>
+    <DevelopmentServerVPath>/</DevelopmentServerVPath><IISUrl>http://localhost:51843/</IISUrl>
+    <NTLMAuthentication>False</NTLMAuthentication><UseCustomServer>False</UseCustomServer><SaveServerSettingsInUserFile>False</SaveServerSettingsInUserFile>
+  </WebProjectProperties></FlavorProperties></VisualStudio></ProjectExtensions>
+</Project>
